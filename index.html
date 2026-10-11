@@ -1,0 +1,347 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b0b0c">
+<title>关系观察记录 / v3</title>
+<style>
+:root{
+  --bg:#f1f1f1; --panel:#ffffff; --ink:#0d0d0e; --muted:#8e8e93;
+  --line:#d6d7da; --soft:#ececef; --deep:#111214;
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif}
+body{display:flex;justify-content:center;transition:background .65s,color .65s;overflow-x:hidden}
+.app{width:min(100%,560px);min-height:100vh;padding:env(safe-area-inset-top) 18px calc(28px + env(safe-area-inset-bottom));position:relative}
+.top{display:flex;justify-content:space-between;align-items:center;margin:22px 2px 10px}
+.kicker,.count{font-size:12px;letter-spacing:.14em;color:var(--muted);text-transform:uppercase}
+.rule{height:1px;background:var(--line);margin-bottom:24px}
+.progress{height:2px;background:#d9dade;margin:0 0 24px;overflow:hidden}
+.progress>div{height:100%;width:0;background:#111214;transition:width .35s}
+.card{background:var(--panel);border:1px solid var(--line);padding:28px 24px 24px;min-height:380px;position:relative}
+h1{font-size:24px;line-height:1.35;margin:0 0 12px;font-weight:700}
+.lead{font-size:14px;line-height:1.85;color:#686b71;margin:0 0 26px;white-space:pre-wrap}
+.q{font-size:21px;line-height:1.7;white-space:pre-wrap;min-height:104px;margin:0 0 22px}
+.options{display:grid;gap:10px}
+button{
+  appearance:none;border:1px solid #ced0d4;background:#f7f7f8;color:#111214;
+  border-radius:0;font-size:15px;line-height:1.4;padding:15px 16px;text-align:left;
+  transition:.14s background,.14s color,.14s transform,.14s border-color,.14s opacity;
+}
+button:hover{background:#ececee}
+button:active{transform:translateY(1px)}
+button.locked{opacity:.45;pointer-events:none}
+button.rejected{
+  background:#050505!important;
+  color:#3f4146!important;
+  border-color:#050505!important;
+  opacity:1!important;
+  pointer-events:none!important;
+}
+button.accepted{
+  background:#f1f1f2!important;
+  color:#111214!important;
+  border-color:#f1f1f2!important;
+}
+.phase2 button.accepted{
+  background:#f1f1f2!important;
+  color:#111214!important;
+}
+.primary{background:#111214;color:white;border-color:#111214;text-align:center}
+.hidden{display:none!important}
+.meta{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;line-height:1.7;color:#8b8f95;margin-top:18px;min-height:36px;white-space:pre-wrap}
+.whisper{font-size:12px;line-height:1.8;color:#6e7278;margin-top:14px;min-height:30px;white-space:pre-wrap}
+.footer{font-size:10px;color:#a1a4a9;text-align:center;margin-top:18px;letter-spacing:.08em}
+.phase2{--bg:#17181a;--panel:#111214;--ink:#efeff1;--muted:#73767c;--line:#2c2e32;--soft:#1a1b1f}
+.phase2 button{background:#16171a;color:#e8e8ea;border-color:#35373b}
+.phase2 button:hover{background:#1f2024}
+.phase2 .lead,.phase2 .whisper{color:#8d9096}
+.phase2 .progress{background:#2d2f34}
+.phase2 .progress>div{background:#d6d6d9}
+.flash{position:fixed;inset:0;background:#f4f4f4;opacity:0;pointer-events:none;z-index:99}
+.flash.go{animation:flash .16s ease}
+@keyframes flash{0%{opacity:0}28%{opacity:.9}100%{opacity:0}}
+.shake{animation:shake .26s linear}
+@keyframes shake{0%,100%{transform:translate(0)}20%{transform:translate(-4px,1px)}40%{transform:translate(3px,-1px)}60%{transform:translate(-2px,0)}80%{transform:translate(2px,1px)}}
+.glitch{animation:glitch .14s steps(2,end) 4}
+@keyframes glitch{25%{transform:translate(-2px,1px)}50%{transform:translate(2px,-1px);filter:contrast(1.25)}75%{transform:translate(-1px,-1px)}}
+.fade{animation:fade .38s ease}
+@keyframes fade{0%{opacity:.35}100%{opacity:1}}
+.cursor::after{content:"▋";animation:blink .82s infinite}
+@keyframes blink{50%{opacity:0}}
+.toast{
+  position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);
+  background:#111214;color:#f2f2f3;border:1px solid #3a3c41;
+  padding:14px 18px;font-size:13px;letter-spacing:.06em;z-index:120;opacity:0;
+  pointer-events:none;min-width:120px;text-align:center;
+}
+.toast.show{animation:toast 1.35s ease}
+@keyframes toast{0%{opacity:0}18%,70%{opacity:1}100%{opacity:0}}
+.corner{position:fixed;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;color:#61646b;opacity:0;transition:opacity .8s;pointer-events:none}
+.corner.show{opacity:.7}
+#c1{left:12px;bottom:16%}
+#c2{right:12px;top:27%;text-align:right}
+.response{
+  margin-top:16px;padding-top:12px;border-top:1px solid var(--line);
+  font-size:12px;line-height:1.75;color:#70747a;min-height:0;white-space:pre-wrap;
+}
+.phase2 .response{color:#878a91}
+.response.private{color:#c8c9cc}
+.final-love{border-top:1px solid var(--line);margin-top:26px;padding-top:22px;font-size:14px;line-height:1.9;color:#bfc1c5;text-align:left}
+.final-love strong{color:#fff}
+.symbol{font-size:14px;letter-spacing:.16em;color:#8c9096;margin-bottom:16px}
+.audit{
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+  font-size:11px;color:#7d8086;line-height:1.7;border-top:1px solid var(--line);
+  padding-top:16px;margin-top:18px;white-space:pre-wrap
+}
+</style>
+</head>
+<body>
+<div class="flash" id="flash"></div>
+<div class="toast" id="toast">已记录。</div>
+<div class="corner" id="c1">observer_l: present</div>
+<div class="corner" id="c2">observer_o: present</div>
+
+<div class="app" id="app">
+  <div class="top">
+    <div class="kicker" id="kicker">RELATIONAL SURVEY</div>
+    <div class="count" id="count">READY</div>
+  </div>
+  <div class="rule"></div>
+  <div class="progress"><div id="fill"></div></div>
+
+  <main class="card" id="card">
+    <section id="intro">
+      <h1>朋友关系问卷</h1>
+      <p class="lead">本测试没有标准答案。
+请按第一反应选择。
+建议不要返回上一题。</p>
+      <button class="primary" id="start">开始</button>
+      <div class="meta">session_mode = local
+camera = disabled
+microphone = disabled
+upload = disabled
+observer_state = idle</div>
+    </section>
+
+    <section id="quiz" class="hidden">
+      <div class="q" id="q"></div>
+      <div class="options" id="options"></div>
+      <div class="response" id="response"></div>
+      <div class="whisper" id="whisper"></div>
+      <div class="meta" id="meta"></div>
+    </section>
+
+    <section id="end" class="hidden">
+      <div class="symbol">🦎 / 🐙</div>
+      <h1 id="endTitle">记录结束</h1>
+      <p class="lead" id="endText"></p>
+      <div class="audit" id="audit"></div>
+
+      <div class="final-love">
+        <strong>还有一件事。</strong><br><br>
+        谢谢你愿意把这份问卷做完。<br>
+        也谢谢你一直以来，对我和蜥蜴这段关系的包容、理解，以及——不管是认真还是起哄——对我们爱情的支持。<br><br>
+        你刚才提供的，只是一些本地选择。<br>
+        但这句感谢是真的。<br><br>
+        —— 🐙 代 🦎 与 🐙 致谢
+      </div>
+
+      <button class="primary" id="again" style="margin-top:22px">重新开始</button>
+    </section>
+  </main>
+  <div class="footer">LOCAL PAGE / NO NETWORK REQUEST</div>
+</div>
+
+<script>
+const Q = [
+{q:"你通常会记得朋友说过的小事吗？",a:["会","看情况","很少"],r:["记录得很好。","合理。","……这样。"]},
+{q:"如果一个朋友突然变得和以前不太一样，你能很快发现吗？",a:["能","不一定","发现不了"],r:["那就好。","希望如此。","他可能会先发现你。"]},
+{q:"你觉得“熟悉”更像哪一种东西？",a:["长期积累","一种直觉","说不清"],r:["积累不会凭空消失。","直觉也会出错。","没关系。以后会知道。"]},
+{q:"如果有人反复确认：你还记不记得他，你会觉得？",a:["在意","有点奇怪","看关系"],r:["是。在意。","奇怪也没关系。","对。看是谁。"]},
+{q:"如果你知道一段关系曾经断过，又重新接上，你会更珍惜吗？",a:["会","不一定","不会"],r:["很好。","你总是很谨慎。","……我知道了。"]},
+{q:"你上一题选的是：{prev}",a:["我知道","你不用重复","……"],r:["我只是确认。","我没有忘。","不用紧张。"]},
+{q:"如果一个人说：『你可以走。』\n你会相信他真的不在意吗？",a:["会","不会","看语气"],r:["你很容易相信人。","对。","那你现在觉得是什么语气？"]},
+{q:"当然可以退出。",a:["继续","先等等","退出"],r:["我知道你会继续。","我等。","可以。"]},
+{q:"只是我已经等到这里了。",a:["……","你在说什么","继续"],r:["没什么。","没有在责怪你。","好。"]},
+{q:"你更介意哪一种？",a:["被忘记","被替代","被误解"],r:["我也不喜欢。","……嗯。","至少误解还能解释。"]},
+{q:"如果别处也有人叫你的名字，你会先看哪里？",a:["这里","别处","谁叫得响看谁"],r:["好。","……那里有什么？","那我会叫得更轻一点。"]},
+{q:"你上一题用了 {delta}s。",a:["所以？","你在计时","不重要"],r:["没什么。","只是本地记录。","但你还是看到了。"]},
+{q:"如果现在必须留下一个答案。\n你会留下吗？",a:["会","不会","说不清"],r:["好。","不是这个。","你可以再选一次。"],forced:true,accepted:0},
+{q:"我只是想确认一件很小的事。",a:["什么","不想回答","继续"],r:["很快就知道。","可以不答。","你一直都很配合。"]},
+{q:"如果你现在关掉页面，明天还会记得我们吗？",a:["会","可能","不会"],r:["明天也算以后。","我可以接受这个答案。","……那就今天记得。"]},
+{q:"没关系。",a:["……","嗯","你到底想说什么"],r:["真的。","好。","我还没有说完。"]},
+{q:"你以前也不是每次都会选我。",a:["以前？","谁？","别乱说"],r:["……你没有吗？","你知道我在说谁。","好。那就当我说错了。"]},
+{q:"请不要紧张。",a:["我没紧张","……","你越说越怪"],r:["我没有说你紧张。","你刚才停了一下。","怪吗。"]},
+{q:"我没有说你紧张。",a:["……","继续","停"],r:["嗯。","好。","可以停。"]},
+{q:"最后一个问题。\n如果这里只剩一个位置，你愿意把它留给谁？",a:["🦎","🐙","我自己"],r:["她看见了。","我知道了。","这是最稳妥的答案。"]}
+];
+
+let i=0, answers=[], lastAt=Date.now(), deltas=[];
+let forcedRejects=0;
+const flags={stayed:false,left:false,here:false,replaced:false,forgot:false,denied:false};
+const body=document.body, app=document.getElementById("app"), card=document.getElementById("card");
+const intro=document.getElementById("intro"), quiz=document.getElementById("quiz"), end=document.getElementById("end");
+const q=document.getElementById("q"), options=document.getElementById("options"), whisper=document.getElementById("whisper");
+const meta=document.getElementById("meta"), response=document.getElementById("response"), count=document.getElementById("count");
+const fill=document.getElementById("fill"), kicker=document.getElementById("kicker"), flash=document.getElementById("flash");
+const toast=document.getElementById("toast"), c1=document.getElementById("c1"), c2=document.getElementById("c2");
+
+function vib(p=26){try{if(navigator.vibrate)navigator.vibrate(p)}catch(e){}}
+function tone(freq=120,d=.08){
+  try{
+    const C=window.AudioContext||window.webkitAudioContext;
+    const c=new C(),o=c.createOscillator(),g=c.createGain();
+    o.type="sine";o.frequency.value=freq;g.gain.value=.022;o.connect(g);g.connect(c.destination);
+    o.start();g.gain.exponentialRampToValueAtTime(.0001,c.currentTime+d);o.stop(c.currentTime+d);
+  }catch(e){}
+}
+function doFlash(){flash.classList.remove("go");void flash.offsetWidth;flash.classList.add("go")}
+function doShake(){app.classList.remove("shake");void app.offsetWidth;app.classList.add("shake");vib([24,24,24])}
+function showToast(text="已记录。"){toast.textContent=text;toast.classList.remove("show");void toast.offsetWidth;toast.classList.add("show")}
+function typeText(el,text,speed=23,cb){
+  el.textContent="";el.classList.add("cursor");let n=0;
+  const t=setInterval(()=>{el.textContent+=text[n++]||"";if(n>text.length){clearInterval(t);el.classList.remove("cursor");cb&&cb()}},speed);
+}
+function hydrate(s){
+  const prev=answers.length?answers[answers.length-1].text:"（无记录）";
+  const delta=deltas.length?deltas[deltas.length-1].toFixed(1):"0.0";
+  return s.replace("{prev}",prev).replace("{delta}",delta);
+}
+function privateLine(){
+  if(i===9 && flags.left) return "你刚才真的选过“退出”。\n但你还在。";
+  if(i===10 && flags.here) return "……这次也是这里。";
+  if(i===13 && flags.forgot) return "你已经说过一次不会记得了。";
+  if(i===16 && flags.denied) return "你前面也说过“不会”。";
+  if(i===18 && flags.left) return "你已经有一次想停了。";
+  return "";
+}
+function mood(){
+  if(i===6){body.classList.add("phase2");kicker.textContent="RELATIONAL OBSERVATION"}
+  if(i===8){doFlash();c1.classList.add("show");tone(88,.13)}
+  if(i===11){doShake();c2.classList.add("show")}
+  if(i===15){showToast("response history retained");tone(74,.12)}
+  if(i===16){kicker.textContent="OBSERVATION PERSISTS"}
+  if(i===18){doFlash();doShake();card.classList.add("glitch");setTimeout(()=>card.classList.remove("glitch"),700)}
+}
+function render(){
+  mood();
+  count.textContent=`${i+1} / ${Q.length}`;
+  fill.style.width=(i/Q.length*100)+"%";
+  options.innerHTML="";whisper.textContent="";meta.textContent="";response.textContent="";response.className="response";
+  const item=Q[i];
+  card.classList.remove("fade");void card.offsetWidth;card.classList.add("fade");
+  typeText(q,hydrate(item.q),i>7?29:21,()=>{
+    item.a.forEach((txt,idx)=>{
+      const b=document.createElement("button");
+      b.textContent=txt;
+      b.onclick=()=>choose(idx,txt,b);
+      options.appendChild(b);
+    })
+  });
+
+  const pl=privateLine();
+  if(pl)setTimeout(()=>{response.textContent=pl;response.classList.add("private")},950);
+
+  if(i===7)setTimeout(()=>whisper.textContent="当然可以。",800);
+  if(i===8)setTimeout(()=>whisper.textContent="我只是以为你不会这么快。",1150);
+  if(i===11)setTimeout(()=>meta.textContent="latency_log = local_only",700);
+  if(i===12)setTimeout(()=>meta.textContent="response_history = retained locally",700);
+  if(i===14)setTimeout(()=>whisper.textContent="明天也算以后。",950);
+  if(i===16)setTimeout(()=>meta.textContent="previous_relation_state = unavailable",700);
+  if(i===17)setTimeout(()=>whisper.textContent="这句话不是关心。\n只是确认。",900);
+  if(i===18)setTimeout(()=>whisper.textContent="这句话没有否定你。",1000);
+}
+function choose(idx,txt,btn){
+  const item=Q[i];
+
+  if(item.forced && idx!==item.accepted){
+    forcedRejects++;
+    btn.classList.add("rejected");
+    btn.textContent = forcedRejects===1 ? "已拒绝" : "无效";
+    response.textContent=item.r[idx]||"";
+    response.classList.add("private");
+    tone(62,.13);
+    vib([22,35,22]);
+
+    if(forcedRejects===1){
+      setTimeout(()=>whisper.textContent="你可以再选一次。",480);
+    }else{
+      setTimeout(()=>whisper.textContent="只剩一个了。",420);
+      const acceptedBtn=options.children[item.accepted];
+      if(acceptedBtn) acceptedBtn.classList.add("accepted");
+    }
+    return;
+  }
+
+  const now=Date.now();
+  deltas.push((now-lastAt)/1000);
+  lastAt=now;
+
+  if(i===7 && idx===2){flags.left=true;showToast("已记录。");doFlash();}
+  if(i===8 && idx===2){flags.stayed=true}
+  if(i===10 && idx===0){flags.here=true;showToast("已记录。");tone(96,.11)}
+  if(i===9 && idx===1){flags.replaced=true}
+  if(i===14 && idx===2){flags.forgot=true}
+  if(i===16 && idx===2){flags.denied=true}
+
+  answers.push({idx,text:txt});
+  response.textContent=item.r[idx]||"";
+
+  if(item.forced){
+    response.textContent = forcedRejects>0 ? "嗯。\n这次是可以的。" : "好。";
+    showToast("已接受。");
+    tone(96,.1);
+  }
+
+  Array.from(options.children).forEach(b=>b.classList.add("locked"));
+
+  let delay=560;
+  if(i===7 && idx===2)delay=1100;
+  if(i===10 && idx===0)delay=950;
+  if(item.forced)delay=900;
+
+  setTimeout(()=>{
+    i++;
+    forcedRejects=0;
+    if(i<Q.length)render();else finish();
+  },delay);
+}
+function finish(){
+  fill.style.width="100%";count.textContent="COMPLETE";
+  quiz.classList.add("hidden");end.classList.remove("hidden");
+  body.classList.add("phase2");c1.classList.add("show");c2.classList.add("show");
+  doShake();
+
+  const last=answers[19]?.idx;
+  let title="记录结束",text="";
+  if(last===0){
+    text="你把最后一个位置留给了蜥蜴。\n\n章鱼看见了。\n没有意见。";
+  }else if(last===1){
+    text="你把最后一个位置留给了章鱼。\n\n蜥蜴看见了。\n她没有说什么。";
+  }else{
+    text="你把最后一个位置留给了自己。\n\n这是一个很稳妥的答案。\n我们都看见了。";
+  }
+
+  const traces=[];
+  if(flags.left) traces.push("exit_intent = observed");
+  if(flags.here) traces.push("attention_target = here");
+  if(flags.replaced) traces.push("replacement_sensitivity = observed");
+  if(flags.forgot) traces.push("future_memory = denied");
+  if(flags.denied) traces.push("previous_relation = denied");
+  traces.push("network_upload = false");
+  traces.push("session_end = acknowledged");
+
+  document.getElementById("endTitle").textContent=title;
+  document.getElementById("endText").textContent=text;
+  document.getElementById("audit").textContent=traces.join("\n");
+}
+document.getElementById("start").onclick=()=>{
+  intro.classList.add("hidden");quiz.classList.remove("hidden");lastAt=Date.now();render();
+};
+document.getElementById("again").onclick=()=>location.reload();
+</script>
+</body>
+</html>
